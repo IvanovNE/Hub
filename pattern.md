@@ -33,9 +33,8 @@
 
 ### Идентификаторами будут выступать значения типа string. Ограничений по списку экземпляров не будет. Это значит, что на любой запрос будет возвращен существующий объект или создан новый. В качестве контейнера объектов возьмем ConcurrentDictionary, входящий в .NET 4. От обычного Dictionary этот вариант отличается потокобезопасностью.
 
-
-`  public sealed class Multiton 
-   { 
+public sealed class Multiton {
+   
      private static readonly ConcurrentDictionary<string, Multiton> _instances 
           = new ConcurrentDictionary<string, Multiton>();
 
@@ -45,5 +44,5 @@
       {
           return Multiton._instances.GetOrAdd(key, (x) => new Multiton(x));
       }
-  }`
+  } 
 
