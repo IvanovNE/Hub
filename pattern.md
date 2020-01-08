@@ -28,3 +28,20 @@
   #####   создаем закрытый контейнер для размещения экземпляров;
   #####   предоставляем доступ к нему через метод;
   #####   клиентский код использует этот метод для получения нужного экземпляра класса.
+
+## 3. Реализация на .NET4
+
+### Идентификаторами будут выступать значения типа string. Ограничений по списку экземпляров не будет. Это значит, что на любой запрос будет возвращен существующий объект или создан новый. В качестве контейнера объектов возьмем ConcurrentDictionary, входящий в .NET 4. От обычного Dictionary этот вариант отличается потокобезопасностью.
+
+public sealed class Multiton
+{
+    private static readonly ConcurrentDictionary<string, Multiton> _instances
+        = new ConcurrentDictionary<string, Multiton>();
+
+    private Multiton(string key) { /* SKIPPED */ }
+ 
+    public static Multiton GetInstance(string key)
+    {
+        return Multiton._instances.GetOrAdd(key, (x) => new Multiton(x));
+    }
+}
