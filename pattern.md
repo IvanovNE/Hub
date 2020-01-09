@@ -45,4 +45,76 @@
           return Multiton._instances.GetOrAdd(key, (x) => new Multiton(x));
       }
     } 
+    
+#####  - экземпляры класса хранятся в контейнере _instances;
+#####  - создать самостоятельно экземпляр не возможно, т.к. конструктор закрыт;
+#####  - на конструктор возложена обязанность создавать экземпляры в зависимости от указанного идентификатора;
+#####  - метод GetInstance() возвращает экземпляр по указанному ключу. При этом вызываемый им метод GetOrAdd() проверяет есть ли готовый объект в контейнере и, если такой не найден, создает новый.
 
+## 4. Улучшенная реализация
+
+  #####   Сделаем так, чтобы реализация не завесила от типа идентификаторов экземпляра. Оставим этот выбор программисту, который будет с ней работать. Для этого используем generic-тип (TKey).
+  #####   Добавим контроль над созданием экземпляров. Такая возможность хоть и была в прошлом варианте, но исключения при создании экземпляра это не всегда удобно и даже не всегда необходимо. Разрешим вызывающему коду самому определять дальнейшие действия при невозможности выдать ему объект. Для этого потребуется аналог метода GetOrAdd(), но с учетом возможности отказа в порождении. Поэтому для контейнера теперь используем класс Dictionary.
+  #####   Кроме того, добавим параметризованный фабричный метод FactoryMethod(). Теперь он будет отвечать за создание экземпляра класса. Если для указанного идентификатора его создать нельзя, то будет возвращено значение по умолчанию (null).
+  #####   Разрешим пользователю удалять единичные экземпляры (метод Remove()) или выполнить полную очистку (метод Clear()).
+  #####   Добавим метод GetExistingInstance(), который возвращает только существующие экземпляры.
+  
+    public sealed class Multiton<TKey>
+    {
+       private static readonly Dictionary<TKey, Multiton<TKey>> _instances
+          = new Dictionary<TKey, Multiton<TKey>>();
+
+      private Multiton(TKey key) { /* SKIPPED */ }
+
+      public static Multiton<TKey> GetInstance(TKey key)
+      {
+          Multiton<TKey> instance = null;
+          if (Multiton<TKey>._instances.TryGetValue(key, out instance)) {
+              return instance;
+          }
+
+          lock (Multiton<TKey>._instances) {
+              if (Multiton<TKey>._instances.TryGetValue(key, out instance)) {
+                  return instance;
+              }
+
+              instance = Multiton<TKey>.FactoryMethod(key);
+              if (instance != null) {
+                  Multiton<TKey>._instances.Add(key, instance);
+              }
+          }
+
+          return instance;
+      }
+
+      public static bool GetExistingInstance(TKey key, out Multiton<TKey> instance)
+      {
+          return Multiton<TKey>._instances.TryGetValue(key, out instance);
+      }
+
+      public static void Clear()
+      {
+          Multiton<TKey>._instances.Clear();
+      }
+
+      public static void Remove(TKey key)
+      {
+          Multiton<TKey>._instances.Remove(key);
+      }
+
+      private static Multiton<TKey> FactoryMethod(TKey key)
+      {
+          return new Multiton<TKey>(key);
+      }
+    }
+    
+   ### Полученный класс можно использовать как основу при разработке собственной реализации. Нужно изменить код конструктора и фабричного метода, а так же добавить необходимые свойства и методы. Его использование может выглядеть так:
+    
+    var obj1 = Multiton<int>.GetInstance(1);
+    var obj2 = Multiton<int>.GetInstance(1);
+    obj2.DoSomething();
+ 
+    Multiton<int> obj3;
+    Multiton<int>.GetExistingInstance(2, out obj3);
+    
+### В данном примере obj1 и obj2 будут содержать ссылку на один и тот же объект. Переменная obj3 будет равна null, т.к. экземпляр с идентификатором 2 еще не создан.
